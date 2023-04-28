@@ -10,6 +10,8 @@ import (
 	"log"
 	"math/big"
 	"net"
+	"strconv"
+	"strings"
 	"sync"
 
 	quic "github.com/quic-go/quic-go"
@@ -45,8 +47,17 @@ func server(c *cli.Context) error {
 		return err
 	}
 	defer listener.Close()
-	log.Printf("Listening at %q...", c.String("bind"))
-
+	destination := strings.Split(c.String("destination"), ":")
+	port := 22
+	if len(destination) == 2 {
+		port, err = strconv.Atoi(destination[1])
+		if err != nil {
+			log.Printf("port parsing error: %v", err)
+			return err
+		}
+	}
+	log.Printf("Listening at %q and forwarding it to \"%s:%d\"...", c.String("bind"), destination[0], port)
+	destAddr := net.TCPAddr{IP: net.ParseIP(destination[0]), Port: port}
 	ctx := context.Background()
 	for {
 		log.Printf("Accepting connection...")
@@ -56,12 +67,12 @@ func server(c *cli.Context) error {
 			continue
 		}
 
-		go serverSessionHandler(ctx, connection)
+		go serverSessionHandler(ctx, connection, destAddr)
 	}
 	return nil
 }
 
-func serverSessionHandler(ctx context.Context, connection quic.Connection) {
+func serverSessionHandler(ctx context.Context, connection quic.Connection, destAddr net.TCPAddr) {
 	log.Printf("hanling connection...")
 	defer connection.CloseWithError(0, "close")
 	for {
@@ -70,15 +81,15 @@ func serverSessionHandler(ctx context.Context, connection quic.Connection) {
 			log.Printf("connection error: %v", err)
 			break
 		}
-		go serverStreamHandler(ctx, stream)
+		go serverStreamHandler(ctx, stream, destAddr)
 	}
 }
 
-func serverStreamHandler(ctx context.Context, conn io.ReadWriteCloser) {
+func serverStreamHandler(ctx context.Context, conn io.ReadWriteCloser, destAddr net.TCPAddr) {
 	log.Printf("handling stream...")
 	defer conn.Close()
 
-	rConn, err := net.DialTCP("tcp", nil, &net.TCPAddr{IP: net.IP{127, 0, 0, 1}, Port: 22})
+	rConn, err := net.DialTCP("tcp", nil, &destAddr)
 	if err != nil {
 		log.Printf("dial error: %v", err)
 		return

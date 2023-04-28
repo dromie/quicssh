@@ -5,8 +5,8 @@ import (
 	"os"
 	"sync"
 
-	"golang.org/x/net/context"
 	cli "github.com/urfave/cli/v2"
+	"golang.org/x/net/context"
 )
 
 func main() {
@@ -16,6 +16,7 @@ func main() {
 				Name: "server",
 				Flags: []cli.Flag{
 					&cli.StringFlag{Name: "bind", Value: "localhost:4242"},
+					&cli.StringFlag{Name: "destination", Value: "localhost:22"},
 				},
 				Action: server,
 			},
