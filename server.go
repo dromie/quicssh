@@ -12,9 +12,9 @@ import (
 	"net"
 	"sync"
 
-	quic "github.com/lucas-clemente/quic-go"
-	"golang.org/x/net/context"
+	quic "github.com/quic-go/quic-go"
 	cli "github.com/urfave/cli/v2"
+	"golang.org/x/net/context"
 )
 
 func server(c *cli.Context) error {
@@ -50,24 +50,24 @@ func server(c *cli.Context) error {
 	ctx := context.Background()
 	for {
 		log.Printf("Accepting connection...")
-		session, err := listener.Accept(ctx)
+		connection, err := listener.Accept(ctx)
 		if err != nil {
 			log.Printf("listener error: %v", err)
 			continue
 		}
 
-		go serverSessionHandler(ctx, session)
+		go serverSessionHandler(ctx, connection)
 	}
 	return nil
 }
 
-func serverSessionHandler(ctx context.Context, session quic.Session) {
-	log.Printf("hanling session...")
-	defer session.CloseWithError(0, "close")
+func serverSessionHandler(ctx context.Context, connection quic.Connection) {
+	log.Printf("hanling connection...")
+	defer connection.CloseWithError(0, "close")
 	for {
-		stream, err := session.AcceptStream(ctx)
+		stream, err := connection.AcceptStream(ctx)
 		if err != nil {
-			log.Printf("session error: %v", err)
+			log.Printf("connection error: %v", err)
 			break
 		}
 		go serverStreamHandler(ctx, stream)
